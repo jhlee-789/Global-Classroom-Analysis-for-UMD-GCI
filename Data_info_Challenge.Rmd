@@ -1,0 +1,195 @@
+---
+title: "Info Challenge 2023 IC23019"
+output: pdf_document
+date: '2023-03-02'
+---
+
+### Purpose
+This analysis tries to identify the general trends of students who took Global Classes (GC) at the University of Maryland during two academic years since the Fall 2020 semester. While figuring out the general trends, we devised two open questions that can help Global Class Initiative (GCI) achieve its mission: 1) providing “Global Learning for all”  and 2) effective communication and engagement with faculty / institutional authorities who are interested in GC. We considered that GCI’s primary objective is to expand Global classes. Therefore, we tried to answer two questions with the objective: Why GC should expand classes and How GC can achieve expansion.
+
+### Dataset and Instructions
+The given dataset, Data_OIA (in this script, called OIA) contains basic information about students who took the Global Classroom at University of Maryland, College Park. The Data_OIA includes two academic years from Fall 2020 to Summer 2022. We extracted 
+    - ID, which is the unique identification number for each instances in the dataset, 
+    - Term_Year, which concatenates Term and Year columns in Data_OIA, 
+    - Course, and Sections columns 
+to generate the cleaned version of Data_OIA, called OIA_clean. The original dataset, Data_OIA, is given from Global Classroom Initiative at University of Maryland, College Park.
+
+### Getting started
+Import the relevant libraries and load the data. 
+*Note* Before import library, install the relevant packages before use library() functions.
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+
+#install.packages(tidyverse)
+#install.packages("plotly")
+#install.packages("tinytex")
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(readxl)
+# Read data
+OIA <- read_excel("OIA.xlsx")
+```
+
+## 0.Clean Data
+
+Clean OIA Data: extract the columns we want to analyze, ID, Term_Year, Course, Sections, with select(). Since data types of these selected columns in OIA are characters, we need to change the data type into categories by using as.factor().
+```{r}
+summary(OIA)
+
+OIA_clean <- OIA %>% 
+  select(ID, Term_Year, Course, Sections)%>%
+  mutate(ID = as.factor(ID),
+         Term_Year = as.factor(Term_Year), 
+         Course = as.factor(Course),
+         Sections = as.factor(Sections))
+```
+
+## 1. Count Courses and Students For Each Term
+
+Create OIA_semester data, which has num_course, which counts the number of courses that are opened in a certain semester and the number of students who took Global Classes (CG) at that term. To do that, we use group_by() to group the data by term_year (for example, Fall 2020 / Spring 2021) and count courses (distinct courses) and students (count each row).
+```{r}
+OIA_semester <- OIA_clean %>% 
+  group_by(Term_Year)%>% 
+  summarize(num_course = n_distinct(Course),
+    num_student = n())
+
+view(OIA_semester)
+```
+
+From OIA semester, we can know that the most number of students took GC in spring semesters in both academic years, compared to other semesters. Since summer and winter semesters are optional semesters, which not all students in UMD are registered. Therefore, we focused only Fall and Spring semester, which more students are registered generally. To identify whether opening GC in spring semester is more effective than opening in Fall semester, we try to create plot for each Fall 2020, Spring 2021, Fall 2021, and Spring 2022 with x-aixs "num_students". And y-axis represents the number of courses that has a certain number of students. Lastly, we insert the line that represents median value of Spring semester data for each academic year. The reason why we used the median, not the average, is that there are outliers in each semester, which hinders its function as a representative value.
+
+## 2. Compare Distribution of Students for Each Class in Fall 2020 Semester and Spring 2021. 
+To compare student distribution for Fall 2020 and Spring 2021, we insert a line that represent median value of number of students in Spring 2021 data. 
+```{r}
+OIA_sections_SP2021 <- OIA_clean %>% 
+  filter(Term_Year == "Spring 2021") %>%
+  unite("Course_Section", Course:Sections, remove = FALSE)%>%
+  group_by(Term_Year, Course_Section) %>% 
+  summarize(num_student = n())
+
+ggplot(OIA_sections_SP2021, aes(x=num_student)) + 
+  geom_histogram(bin = 15, fill="royalblue", color="white") +
+  geom_vline(xintercept=median(OIA_sections_SP2021$num_student), color="red", linetype=2, size=1.5) +
+  theme_classic() +
+  labs(title="Distribution of Students for Each Class During Spring 2021",
+       caption = "Source: Global Classroom of University of Maryland, College Park",
+       x="Number of Student", y="Number of Class") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.ticks = element_blank(),
+        plot.title = element_text(size=17),
+        panel.border = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_line(color="grey95"),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.title = element_text(face="bold"),
+        plot.caption = element_text(face="italic")) +
+  annotate("rect", xmin = 17, xmax = 35, ymin = 3.3, ymax = 3.7,
+           fill="grey", alpha = 0.1)+
+  annotate("text", x=26, y=3.5,
+           label="Median for Spring 2021") +
+  ylim(0,6)
+```
+
+```{r}
+OIA_sections_FA2020 <- OIA_clean %>% 
+  filter(Term_Year == "Fall 2020") %>%
+  unite("Course_Section", Course:Sections, remove = FALSE)%>%
+  group_by(Term_Year, Course_Section)%>% 
+  summarize(num_student = n())
+
+ggplot(OIA_sections_FA2020, aes(x=num_student)) + 
+  geom_histogram(bin = 15, fill="royalblue", color="white")+
+  geom_vline(xintercept=median(OIA_sections_FA2020$num_student), color="red", linetype=2, size=1.5) +
+  theme_classic() +
+  labs(title="Distribution of Students for Each Class During Fall 2020",
+       caption = "Source: Global Classroom of University of Maryland, College Park",
+       x="Number of Student", y="Number of Class") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.ticks = element_blank(),
+        plot.title = element_text(size=17),
+        panel.border = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_line(color="grey95"),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.title = element_text(face="bold"),
+        plot.caption = element_text(face="italic")) +
+  annotate("rect", xmin = 2.8, xmax = 7.8, ymin = 5.4, ymax = 6,
+           fill="grey", alpha = 0.1)+
+  annotate("text", x=5.2, y=5.7,
+           label="Median for Fall 2020") +
+  ylim(0,6)
+```
+
+##3. Compare Distribution of Students for Each Class in Fall 2021 Semester and Spring 2022. 
+To compare student distribution for Fall 2021 and Spring 2022, we insert a line that represent median value of number of students in Spring 2022 data. 
+```{r}
+OIA_sections_SP2022 <- OIA_clean %>% 
+  filter(Term_Year == "Spring 2022") %>%
+  unite("Course_Section", Course:Sections, remove = FALSE)%>%
+  group_by(Term_Year, Course_Section)%>% 
+  summarize(num_student = n())
+
+ggplot(OIA_sections_SP2022, aes(x=num_student)) + 
+  geom_histogram(bin = 15, fill="royalblue", color="white") +
+  geom_vline(xintercept=median(OIA_sections_SP2022$num_student), color="red", linetype=2, size=1.5) +
+    theme_classic() +
+  labs(title="Distribution of Students for Each Class During Spring 2022",
+       caption = "Source: Global Classroom of University of Maryland, College Park",
+       x="Number of Student", y="Number of Class") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.ticks = element_blank(),
+        plot.title = element_text(size=17),
+        panel.border = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_line(color="grey95"),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.title = element_text(face="bold"),
+        plot.caption = element_text(face="italic")) +
+  annotate("rect", xmin = 11, xmax = 29, ymin = 4.8, ymax = 5.2,
+           fill="grey", alpha = 0.1)+
+  annotate("text", x=20, y=5,
+           label="Median for Spring 2022") +
+  ylim(0,6)
+```
+
+```{r}
+OIA_sections_FA2021 <- OIA_clean %>% 
+  filter(Term_Year == "Fall 2021") %>%
+  unite("Course_Section", Course:Sections, remove = FALSE)%>%
+  group_by(Term_Year, Course_Section)%>% 
+  summarize(num_student = n())
+
+ggplot(OIA_sections_FA2021, aes(x=num_student)) + 
+  geom_histogram(bin = 15, fill="royalblue", color="white")+
+  geom_vline(xintercept=median(OIA_sections_FA2021$num_student), color="red", linetype=2, size = 1.5) +
+    theme_classic() +
+  labs(title="Distribution of Students for Each Class During Fall 2021",
+       caption = "Source: Global Classroom of University of Maryland, College Park",
+       x="Number of Student", y="Number of Class") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        axis.ticks = element_blank(),
+        plot.title = element_text(size=17),
+        panel.border = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_line(color="grey95"),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.title = element_text(face="bold"),
+        plot.caption = element_text(face="italic")) +
+  annotate("rect", xmin = 2.5, xmax = 4.5, ymin = 3.3, ymax = 3.7,
+           fill="grey", alpha = 0.1)+
+  annotate("text", x=3.5, y=3.5,
+           label="Median for Fall 2021") +
+  ylim(0,6)
+```
+
